@@ -103,17 +103,15 @@ following TikTok's redirect.
 TikTok actively blocks automated browsers. This instance does not try to get around that, so some
 pages depend on whether TikTok lets the request through:
 
-- **Tag feeds are always empty.** The tag header (title, view count) loads only when TikTok accepts
-  the request. Otherwise the tag page returns an error (502).
-- **Music, For You and Following are unreliable.** About half of signed calls get an empty HTTP 403.
-  Each call is retried up to 3 times, but a page can still show an empty feed or a 502 error page.
-  Reloading usually helps. A sound only shows a 404 when TikTok says it doesn't exist; a blocked
-  request shows a 502. Music headers usually lack the video count, because TikTok blocks
-  `music/detail`. The header is then built from the first post that uses the sound, and the
-  "Videos" line is hidden. For You falls back to the single video TikTok embeds in its `/foryou` HTML.
-  `/following` shows TikTok's suggested accounts, because anonymous sessions have no real following
-  list, and it only has one page.
-- **User profiles, single videos and comments are reliable.** They use plain HTTP, not the browser.
+- **Tag feeds are always empty.** The tag header (title, view count) loads, and an unknown tag gives a
+  404, but TikTok returns an empty `challenge/item_list` to the headless browser. Its own tag page shows
+  "Something went wrong" there too, and even a real logged-out Firefox only got 2 items for `#fyp`.
+- **Music, For You and Following.** These work through the browser as long as it uses a regular Chrome
+  user agent. The browser context uses `USER_AGENT`, because TikTok answered most signed calls from
+  Chromium's default "HeadlessChrome" UA with an empty 403. Music headers may still lack the video count;
+  the "Videos" line is then hidden. `/following` shows TikTok's suggested accounts, because anonymous
+  sessions have no real following list, and it only has one page.
+- **User profiles, single videos and comments** use plain HTTP (with the browser fallback above).
 - **Video URLs expire and are tied to one process.** TikTok CDN URLs only stream with the cookies of
   the process that fetched them, and they expire after some hours. So cache entries that hold video URLs
   (videos and feeds) are namespaced per process: after a restart, or in another uvicorn worker, they are

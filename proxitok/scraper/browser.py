@@ -87,8 +87,14 @@ class BrowserSession:
         get_cookies: Optional[Callable[[], list[tuple[str, str, str, str]]]] = None,
         put_cookies: Optional[Callable[[list[dict]], None]] = None,
         lock_timeout: Optional[float] = None,
+        user_agent: Optional[str] = None,
     ) -> None:
         self.headless = headless
+        # Headless Chromium announces itself as "HeadlessChrome"; TikTok answers most signed API calls
+        # from that UA with an empty 403 (verified 2026-11-03: tag/music/For You pages 403 with the
+        # default UA, 200 with a regular Chrome UA). Using the app's USER_AGENT also keeps the browser
+        # and the httpx client on one identity, so cookies earned by one stay valid for the other.
+        self.user_agent = user_agent
         self.timeout = timeout
         self.lock_timeout = timeout if lock_timeout is None else lock_timeout
         self.proxy = proxy
@@ -127,7 +133,10 @@ class BrowserSession:
                 launch["proxy"] = {"server": self.proxy}
             browser = await self._pw.chromium.launch(**launch)
             self.launches += 1
-            ctx = await browser.new_context(locale="en-US")
+            ctx_opts: dict[str, Any] = {"locale": "en-US", "viewport": {"width": 1920, "height": 1080}}
+            if self.user_agent:
+                ctx_opts["user_agent"] = self.user_agent
+            ctx = await browser.new_context(**ctx_opts)
             ctx.set_default_timeout(self.timeout * 1000)
             await self._push_cookies(ctx)
             page = await ctx.new_page()

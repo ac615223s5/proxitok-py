@@ -116,6 +116,7 @@ class Scraper:
             proxy=s.PROXY,
             get_cookies=self._http.cookie_items,
             put_cookies=self._http.set_cookies,
+            user_agent=s.USER_AGENT,
         )
 
     async def close(self) -> None:

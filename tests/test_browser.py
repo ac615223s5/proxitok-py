@@ -75,6 +75,7 @@ class FakeBrowserObj:
         self.closed = False
 
     async def new_context(self, **kw):
+        self.pw.context_kwargs.append(kw)
         c = FakeCtx(self.pw)
         self.pw.contexts.append(c)
         return c
@@ -88,6 +89,7 @@ class FakePW:
         self.goto_delay = goto_delay
         self.cookies = []
         self.browsers, self.contexts, self.pages = [], [], []
+        self.context_kwargs = []
         self.chromium = self
         self._evaluate = evaluate
 
@@ -216,4 +218,14 @@ async def test_empty_body_retries_then_502():
         await s.fetch_json("/x/", {}, attempts=2)
     assert ei.value.http_code == 502 and ei.value.tiktok_code == -1
     assert len(pw.pages[-1].urls) == 2
+    await s.close()
+
+
+async def test_context_uses_configured_user_agent():
+    """Regression: the default "HeadlessChrome" UA gets empty 403s from TikTok's signed APIs."""
+    pw = FakePW()
+    ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+    s = session(pw, timeout=5, user_agent=ua)
+    await s.fetch_json("/api/music/item_list/", {"musicID": "1"})
+    assert pw.context_kwargs[-1]["user_agent"] == ua
     await s.close()
