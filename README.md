@@ -61,8 +61,8 @@ docker compose up -d --build
 This starts the app on port 8080 and a Redis cache. The image is `python:3.12-slim` with uv and
 Playwright Chromium, and it runs as a non-root user. Put overrides in `.env` (optional).
 Behind a reverse proxy, set `APP_URL` to the public URL. The compose file uses `env_file` with
-`required: false`, which needs Docker Compose 2.24 or newer. **The Docker setup has not been built or
-run yet**, because no Docker was available while writing it.
+`required: false`, which needs Docker Compose 2.24 or newer. Set `PROXITOK_PORT` in `.env` to change
+the published port (`8130` or `192.168.1.10:8130`). Tested on Docker 29 / Compose v5, 2026-11-03.
 
 ## Configuration
 
@@ -122,8 +122,11 @@ pages depend on whether TikTok lets the request through:
   restart or once they expire.
 - **Comments can be missing.** If `comment/list` fails or takes over 8 s, the video page renders
   without comments and the failure is remembered for 2 minutes.
-- **No captcha handling.** If TikTok starts serving captchas to the instance's IP, feeds stop working.
-  A residential `PROXY` may help.
+- **TikTok's WAF on server IPs.** From some IPs (seen from a server, not from a home connection)
+  TikTok answers profile pages with a "Please wait..." JS challenge page, or with an empty 403. When
+  that happens the page is loaded in the headless browser instead, which passes the challenge
+  normally. Those profiles take about 2–5 s uncached instead of under 1 s, and browser loads run one at
+  a time. Other captchas (slider/puzzle) are not handled; a residential `PROXY` may help.
 - **Photo posts in the card theme** open the modal without a video (same as the PHP version).
 
 ## License

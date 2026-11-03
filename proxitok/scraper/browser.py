@@ -296,6 +296,39 @@ class BrowserSession:
                 if attempt == 2:
                     raise ScraperError(503, None, f"Browser failure: {e.__class__.__name__}", {"error": str(e)[:300]}) from e
 
+    async def load_page(self, url: str) -> str:
+        """Load ``url`` in a fresh tab of the shared context and return its HTML once TikTok's page
+        data is present. Used when plain HTTP gets the WAF challenge: the browser runs it, and the
+        resulting WAF cookies are pulled into the httpx jar so later plain requests pass too."""
+        try:
+            async with asyncio.timeout(self.lock_timeout):
+                await self._lock.acquire()
+        except TimeoutError:
+            raise ScraperError(503, None, "The TikTok browser is busy with other requests; try again in a moment",
+                               {"url": url}) from None
+        try:
+            async def run() -> str:
+                await self._push_cookies(self._ctx)
+                page = await self._ctx.new_page()
+                try:
+                    await page.goto(url, wait_until="domcontentloaded")
+                    try:
+                        await page.wait_for_selector(
+                            "#__UNIVERSAL_DATA_FOR_REHYDRATION__, #SIGI_STATE", state="attached",
+                            timeout=max(1.0, self.timeout - 2.0) * 1000,
+                        )
+                    except Exception:
+                        pass  # caller's parse_hydration reports the failure with an excerpt
+                    return await page.content()
+                finally:
+                    await page.close()
+
+            html = await self._with_restart(run)
+            await self._pull_cookies()
+            return html
+        finally:
+            self._lock.release()
+
     async def fetch_json(self, path: str, params: dict[str, str], attempts: int = ATTEMPTS) -> dict:
         """Signed GET of a TikTok web API from inside the page. Returns the validated JSON dict.
 

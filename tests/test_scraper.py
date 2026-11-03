@@ -593,3 +593,76 @@ async def test_close_idempotent():
     with pytest.raises(ScraperError) as ei:
         await s.user("tiktok")
     assert ei.value.http_code == 503
+
+
+# ---------------------------------------------------------------- TikTok WAF challenge
+
+WAF_HTML = (
+    '<!DOCTYPE html><html><head><script id="slardar-config" type="application/json">'
+    '{"slardarClient": "SlardarWAF"}</script></head><body>Please wait...'
+    '<p id="wci" class="_wafchallengeid"></p></body></html>'
+)
+
+
+class FakePageLoader:
+    """Stands in for BrowserSession: started, load_page returns canned HTML and records URLs."""
+
+    def __init__(self, html):
+        self.html, self.urls, self.started = html, [], True
+
+    async def load_page(self, url):
+        self.urls.append(url)
+        return self.html
+
+    async def close(self):
+        pass
+
+
+def test_waf_detection():
+    from proxitok.scraper.http import is_waf_challenge
+    assert is_waf_challenge(WAF_HTML)
+    assert not is_waf_challenge(universal_html(load("user_tiktok")))
+
+
+@respx.mock
+async def test_waf_page_falls_back_to_browser(scraper):
+    respx.get("https://www.tiktok.com/@_/video/7702947070604332319").mock(return_value=httpx.Response(200, text=WAF_HTML))
+    respx.get(url__startswith="https://www.tiktok.com/api/comment/list/").mock(
+        return_value=httpx.Response(200, json={"status_code": 0, "comments": []}))
+    fake = FakePageLoader(universal_html(load("video_tiktok")))
+    scraper._browser = fake
+    item, _, _ = await scraper.video("7702947070604332319")
+    assert item.id == "7702947070604332319"
+    assert fake.urls == ["https://www.tiktok.com/@_/video/7702947070604332319"]
+
+
+@respx.mock
+async def test_waf_on_api_refreshes_cookies_and_retries(scraper):
+    route = respx.get(url__startswith="https://www.tiktok.com/api/comment/list/").mock(side_effect=[
+        httpx.Response(200, text=WAF_HTML),
+        httpx.Response(200, json={"status_code": 0, "comments": [{"cid": "1", "text": "hi", "user": {}}]}),
+    ])
+    fake = FakePageLoader("<html></html>")
+    scraper._browser = fake
+    comments = await scraper._comments("7702947070604332319")
+    assert [c.text for c in comments] == ["hi"] and route.call_count == 2 and len(fake.urls) == 1
+
+
+@respx.mock
+async def test_waf_page_unsolved_raises(scraper):
+    respx.get("https://www.tiktok.com/@tiktok").mock(return_value=httpx.Response(200, text=WAF_HTML))
+    scraper._browser = FakePageLoader(WAF_HTML)  # browser didn't get past it either
+    with pytest.raises(ScraperError) as ei:
+        await scraper.user("tiktok")
+    assert ei.value.http_code == 502
+
+
+@respx.mock
+async def test_page_403_falls_back_to_browser(scraper):
+    respx.get("https://www.tiktok.com/@tiktok").mock(return_value=httpx.Response(403, content=b""))
+    respx.get(url__startswith="https://www.tiktok.com/api/creator/item_list/").mock(
+        return_value=httpx.Response(200, json={"statusCode": 0, "itemList": [], "hasMorePrevious": False}))
+    fake = FakePageLoader(universal_html(load("user_tiktok")))
+    scraper._browser = fake
+    info, _ = await scraper.user("tiktok")
+    assert info.detail.unique_id == "tiktok" and fake.urls == ["https://www.tiktok.com/@tiktok"]

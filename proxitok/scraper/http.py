@@ -44,6 +44,24 @@ _VIDEO_PATH_RE = re.compile(r"^/@([^/?#]*)/(?:video|photo)/(\d+)")  # TikTok may
 _USER_PATH_RE = re.compile(r"^/@([^/?#]+)/?$")
 
 
+# TikTok's anti-bot WAF ("SlardarWAF") answers some IPs with a ~1.5 KB "Please wait..." page that runs
+# a JS challenge, sets _waftokenid/waforigin_id cookies and reloads. Plain HTTP can't run it; a real
+# browser passes it transparently (see BrowserSession.load_page).
+_WAF_MARKERS = ("_wafchallengeid", "SlardarWAF", "waf-aiso")
+
+
+def is_waf_challenge(html: str) -> bool:
+    head = html[:5000]
+    return any(m in head for m in _WAF_MARKERS)
+
+
+class WafChallenge(ScraperError):
+    """TikTok served its JS bot challenge instead of the page; retry through the browser."""
+
+    def __init__(self, url: str) -> None:
+        super().__init__(502, -1, "TikTok served a browser verification page", {"url": url})
+
+
 def _host_ok(host: Optional[str]) -> bool:
     host = (host or "").lower()
     return host == "tiktok.com" or host.endswith(".tiktok.com")
@@ -212,6 +230,10 @@ class TikTokHttp:
             )
         except httpx.HTTPError as e:
             raise ScraperError(502, None, f"Could not reach TikTok: {e.__class__.__name__}", {"url": url, "error": str(e)}) from e
+        if r.status_code == 403:
+            # Seen from datacenter IPs once the WAF is involved: an empty 403 for every profile page
+            # (WAF cookies are bound to the browser that earned them). The browser still gets through.
+            raise WafChallenge(url)
         if r.status_code >= 400 and r.status_code != 404:
             raise ScraperError(502, None, f"TikTok returned HTTP {r.status_code}", {"url": url, "status": r.status_code})
         return r.text
@@ -219,6 +241,8 @@ class TikTokHttp:
     async def hydration(self, url: str) -> dict:
         """Fetch a TikTok page and return its ``__DEFAULT_SCOPE__``."""
         html = await self.get_page(url)
+        if is_waf_challenge(html):
+            raise WafChallenge(url)
         scope = parse_hydration(html)
         return scope
 
@@ -238,6 +262,8 @@ class TikTokHttp:
             raise ScraperError(502, None, f"Could not reach TikTok: {e.__class__.__name__}", {"url": url, "error": str(e)}) from e
         if not r.content:
             raise ScraperError(502, -1, f"Empty response from TikTok (HTTP {r.status_code})", {"url": url, "status": r.status_code})
+        if is_waf_challenge(r.text):
+            raise WafChallenge(url)
         try:
             data = r.json()
         except ValueError:
@@ -273,4 +299,4 @@ class TikTokHttp:
         raise ScraperError(404, None, "Short link did not resolve to a TikTok video", {"url": url, "final": str(current)})
 
 
-__all__ = ["TikTokHttp", "parse_hydration", "scope_section", "check_api_json", "API_BASE_PARAMS", "BASE_URL", "REFERER"]
+__all__ = ["TikTokHttp", "WafChallenge", "is_waf_challenge", "parse_hydration", "scope_section", "check_api_json", "API_BASE_PARAMS", "BASE_URL", "REFERER"]

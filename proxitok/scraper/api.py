@@ -51,7 +51,7 @@ from urllib.parse import quote
 from .browser import BrowserSession
 from .cache import Cache, NullCache, make_cache
 from .errors import ScraperError
-from .http import BASE_URL, REFERER, TikTokHttp, scope_section
+from .http import BASE_URL, REFERER, TikTokHttp, WafChallenge, parse_hydration, scope_section
 from .models import Comment, Feed, Item, Music, MusicInfo, OgMeta, TagInfo, UserFeed, UserInfo
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -163,6 +163,28 @@ class Scraper:
             except ScraperError:
                 pass
 
+    async def _hydration(self, url: str) -> dict:
+        """Page data over plain HTTP; if TikTok answers with its WAF challenge, load the page in the
+        browser instead (which also hands the WAF cookies to the httpx jar for next time)."""
+        try:
+            return await self.http.hydration(url)
+        except WafChallenge:
+            log.info("WAF challenge for %s; loading it in the browser", url)
+        if not self.browser.started:
+            await self._ensure_cookies()
+        return parse_hydration(await self.browser.load_page(url))
+
+    async def _api(self, path: str, params: dict[str, str], **kw: Any) -> dict:
+        """Unsigned API call over plain HTTP; on a WAF challenge, pass it once in the browser and retry."""
+        try:
+            return await self.http.get_api(path, params, **kw)
+        except WafChallenge:
+            log.info("WAF challenge for %s; refreshing WAF cookies via the browser", path)
+        if not self.browser.started:
+            await self._ensure_cookies()
+        await self.browser.load_page(f"{BASE_URL}/explore")
+        return await self.http.get_api(path, params, **kw)
+
     async def _browser_json(self, path: str, params: dict[str, str], attempts: int = 3) -> dict:
         if not self.browser.started:
             await self._ensure_cookies()
@@ -187,7 +209,7 @@ class Scraper:
         url = f"{BASE_URL}/@{quote(name)}"
 
         async def fetch_info() -> dict:
-            sec = scope_section(await self.http.hydration(url), "webapp.user-detail", url)
+            sec = scope_section(await self._hydration(url), "webapp.user-detail", url)
             return {"userInfo": sec.get("userInfo") or {}, "shareMeta": sec.get("shareMeta") or {}}
 
         raw = await self._cached(f"user:{name.lower()}", fetch_info)
@@ -204,7 +226,7 @@ class Scraper:
             # Feed.cursor is the oldest item's createTime in ms; the API compares inclusively at
             # second granularity -> step one second back so the boundary item isn't repeated.
             api_cursor = str(int(time.time() * 1000)) if cur == "0" else str(max(int(cur) - 1000, 1))
-            return await self.http.get_api(
+            return await self._api(
                 "/api/creator/item_list/",
                 {"secUid": sec_uid, "count": "15", "cursor": api_cursor, "type": "1"},
             )
@@ -238,7 +260,7 @@ class Scraper:
         url = f"{BASE_URL}/@{quote(user)}/video/{vid}"
 
         async def fetch() -> dict:
-            sec = scope_section(await self.http.hydration(url), "webapp.video-detail", url)
+            sec = scope_section(await self._hydration(url), "webapp.video-detail", url)
             struct = (sec.get("itemInfo") or {}).get("itemStruct") or {}
             if not struct.get("id"):
                 raise ScraperError.from_tiktok_code(10204, debug={"url": url})
@@ -259,7 +281,7 @@ class Scraper:
             return [Comment.from_tiktok(c) for c in hit]
         try:
             data = await asyncio.wait_for(
-                self.http.get_api(
+                self._api(
                     "/api/comment/list/", {"aweme_id": vid, "count": "20", "cursor": "0"}, base_params=False
                 ),
                 timeout=COMMENTS_TIMEOUT,
@@ -395,7 +417,7 @@ class Scraper:
             err = e
         url = f"{BASE_URL}/foryou"
         try:
-            sec = scope_section(await self.http.hydration(url), "webapp.foryou.video", url)
+            sec = scope_section(await self._hydration(url), "webapp.foryou.video", url)
             feed = Feed.from_tiktok({"itemList": sec.get("itemList") or []})
             if feed.items:
                 return Feed(items=feed.items, has_more=False, cursor="0")
