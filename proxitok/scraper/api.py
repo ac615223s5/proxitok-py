@@ -2,7 +2,7 @@
 
 Implementation: plain-HTTP hydration + unsigned creator/item_list (``http.py``) for user and
 video pages; a Playwright page (``browser.py``) for the endpoints that need TikTok's signing
-(tag, music, For You, suggested users, comments). Raw TikTok JSON is cached (``cache.py``).
+(tag, music, For You, suggested users). Comments use plain HTTP too. Raw TikTok JSON is cached (``cache.py``).
 
 General rules for every data method:
   * Returns normalized models from ``proxitok.scraper.models``; never raw dicts.
@@ -24,7 +24,11 @@ Live findings (2026-11-03) the implementation must respect:
   * In-page ``window.fetch`` (Playwright page on tiktok.com) gets signed (msToken, X-Bogus, X-Gnarly
     appended by TikTok's SDK) and returned JSON for: challenge/detail, recommend/item_list,
     music/item_list. Returned EMPTY body for: post/item_list, challenge/item_list (tag fyp),
-    music/detail, user/detail. comment/list was not tested in-page; unsigned it is empty.
+    music/detail, user/detail.
+  * Comments: ``GET /api/comment/list/?aid=1988&aweme_id=<id>&count=20&cursor=0`` works UNSIGNED over
+    plain httpx, no cookies needed (verified 2026-11-03 against a HAR of a real browser session).
+    Adding ``device_platform=web_pc`` makes TikTok return an empty body (it then expects signatures),
+    so this call must NOT use API_BASE_PARAMS.
     recommend/user returned statusCode 4.
   * ``/api/user/list/`` (suggested accounts, used for Following/Discover) was only obtained by
     intercepting the page's own request (page.on("response")) on /@tiktok; a direct call was not tested.
@@ -60,7 +64,7 @@ log = logging.getLogger(__name__)
 _USERNAME_RE = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
 _DIGITS_RE = re.compile(r"^\d{1,25}$")
 
-COMMENTS_TIMEOUT = 12.0
+COMMENTS_TIMEOUT = 8.0
 NEGATIVE_TTL = 120  # seconds to remember "comments unavailable" for a video
 
 
@@ -255,7 +259,9 @@ class Scraper:
             return [Comment.from_tiktok(c) for c in hit]
         try:
             data = await asyncio.wait_for(
-                self._browser_json("/api/comment/list/", {"aweme_id": vid, "count": "20", "cursor": "0", "from_page": "video"}, attempts=1),
+                self.http.get_api(
+                    "/api/comment/list/", {"aweme_id": vid, "count": "20", "cursor": "0"}, base_params=False
+                ),
                 timeout=COMMENTS_TIMEOUT,
             )
             raw = [c for c in (data.get("comments") or []) if isinstance(c, dict)]

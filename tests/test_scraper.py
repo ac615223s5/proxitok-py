@@ -317,15 +317,17 @@ async def test_video_with_comments_failure(scraper):
     route = respx.get("https://www.tiktok.com/@tiktok/video/7702947070604332319").mock(
         return_value=httpx.Response(200, text=universal_html(load("video_tiktok")))
     )
-    fake = FakeBrowser({"/api/comment/list/": blocked()})
-    scraper._browser_json = fake
+    # TikTok answers an empty 200 body when it refuses the request
+    croute = respx.get(url__startswith="https://www.tiktok.com/api/comment/list/").mock(
+        return_value=httpx.Response(200, content=b"")
+    )
     item, info, comments = await scraper.video("7702947070604332319", "tiktok")
     assert item.id == "7702947070604332319" and item.has_video
     assert info.detail.unique_id == "tiktok"
     assert comments == [] and item.comments == []
     # cached video + negative-cached comments
     await scraper.video("7702947070604332319", "tiktok")
-    assert route.call_count == 1 and len(fake.calls) == 1
+    assert route.call_count == 1 and croute.call_count == 1
 
 
 @respx.mock
@@ -333,12 +335,21 @@ async def test_video_comments_parsed(scraper):
     respx.get("https://www.tiktok.com/@_/video/7702947070604332319").mock(
         return_value=httpx.Response(200, text=universal_html(load("video_tiktok")))
     )
-    scraper._browser_json = FakeBrowser({"/api/comment/list/": {"status_code": 0, "comments": [
-        {"cid": "1", "text": "nice", "create_time": 5, "digg_count": 2,
-         "user": {"unique_id": "u1", "nickname": "U", "avatar_thumb": {"url_list": ["https://a"]}}}]}})
+    croute = respx.get(url__startswith="https://www.tiktok.com/api/comment/list/").mock(
+        return_value=httpx.Response(200, json={"status_code": 0, "comments": [
+            {"cid": "1", "text": "nice", "create_time": 5, "digg_count": 2,
+             "user": {"unique_id": "u1", "nickname": "U", "avatar_thumb": {"url_list": ["https://a"]}}}]})
+    )
+    scraper._browser_json = FakeBrowser({})  # comments must not go through the browser
     item, _, comments = await scraper.video("7702947070604332319")
     assert [c.text for c in comments] == ["nice"] and comments[0].user.avatar_thumb == "https://a"
     assert item.comments is comments
+    assert scraper._browser_json.calls == []
+    # Unsigned comment/list only works without the web-app params (device_platform=web_pc
+    # makes TikTok demand signatures and return an empty body).
+    q = croute.calls.last.request.url.params
+    assert q["aweme_id"] == "7702947070604332319" and q["aid"] == "1988"
+    assert "device_platform" not in q and "app_name" not in q
 
 
 @respx.mock

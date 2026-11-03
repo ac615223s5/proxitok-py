@@ -222,9 +222,14 @@ class TikTokHttp:
         scope = parse_hydration(html)
         return scope
 
-    async def get_api(self, path: str, params: dict[str, str]) -> dict:
-        """Unsigned GET to a TikTok web API (works for /api/creator/item_list/)."""
-        q = dict(API_BASE_PARAMS)
+    async def get_api(self, path: str, params: dict[str, str], *, base_params: bool = True) -> dict:
+        """Unsigned GET to a TikTok web API (works for /api/creator/item_list/ and /api/comment/list/).
+
+        ``base_params=False`` sends only ``aid`` + ``params``: some endpoints (comment/list) answer an
+        empty body as soon as ``device_platform=web_pc`` is present, because that marks the request
+        as a web-app call that must carry X-Bogus/X-Gnarly signatures.
+        """
+        q = dict(API_BASE_PARAMS) if base_params else {"aid": API_BASE_PARAMS["aid"]}
         q.update(params)
         url = f"{BASE_URL}{path}?{urlencode(q)}"
         try:

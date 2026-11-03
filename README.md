@@ -13,7 +13,10 @@ through `/stream`, so the user's browser never talks to TikTok.
 - **Profiles and videos**: plain HTTP. TikTok's HTML pages embed their data in a
   `__UNIVERSAL_DATA_FOR_REHYDRATION__` JSON blob, which is parsed with `httpx`. A profile's posts come
   from `/api/creator/item_list/`, which still answers unsigned requests.
-- **Other feeds** (music, tags, For You, suggested accounts, comments): TikTok's web API only
+- **Comments**: plain HTTP too. `/api/comment/list/?aid=1988&aweme_id=<id>` answers unsigned requests
+  as long as the web-app parameters (`device_platform=web_pc` etc.) are left out; with them TikTok
+  demands signatures and returns an empty body. The first 20 comments are shown, as in the PHP version.
+- **Other feeds** (music, tags, For You, suggested accounts): TikTok's web API only
   answers signed requests. One headless Chromium page (Playwright) is kept open on tiktok.com, and API
   calls run `window.fetch` inside it, so TikTok's own JavaScript adds the signature parameters.
   The browser launches lazily on the first request that needs it (the launch keeps going even if
@@ -100,8 +103,6 @@ following TikTok's redirect.
 TikTok actively blocks automated browsers. This instance does not try to get around that, so some
 pages depend on whether TikTok lets the request through:
 
-- **Comments never load.** TikTok refuses `comment/list` for anonymous automated sessions. Video
-  pages render without comments.
 - **Tag feeds are always empty.** The tag header (title, view count) loads only when TikTok accepts
   the request. Otherwise the tag page returns an error (502).
 - **Music, For You and Following are unreliable.** About half of signed calls get an empty HTTP 403.
@@ -112,16 +113,15 @@ pages depend on whether TikTok lets the request through:
   "Videos" line is hidden. For You falls back to the single video TikTok embeds in its `/foryou` HTML.
   `/following` shows TikTok's suggested accounts, because anonymous sessions have no real following
   list, and it only has one page.
-- **User profiles and single videos are reliable.** They use plain HTTP, not the browser.
+- **User profiles, single videos and comments are reliable.** They use plain HTTP, not the browser.
 - **Video URLs expire and are tied to one process.** TikTok CDN URLs only stream with the cookies of
   the process that fetched them, and they expire after some hours. So cache entries that hold video URLs
   (videos and feeds) are namespaced per process: after a restart, or in another uvicorn worker, they are
   fetched again rather than served from the JSON/Redis cache. Profile, tag and music headers and
   short-link lookups are still shared. Video links in RSS items you already downloaded stop playing after a
   restart or once they expire.
-- **Slow first video page.** Each video page tries to load comments (which TikTok refuses) for up to
-  12 s. The failure is remembered for 2 minutes. In practice the page takes 3–5 s, or longer while the
-  browser is busy or launching.
+- **Comments can be missing.** If `comment/list` fails or takes over 8 s, the video page renders
+  without comments and the failure is remembered for 2 minutes.
 - **No captcha handling.** If TikTok starts serving captchas to the instance's IP, feeds stop working.
   A residential `PROXY` may help.
 - **Photo posts in the card theme** open the modal without a video (same as the PHP version).
