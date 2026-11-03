@@ -1,0 +1,40 @@
+{% extends "layouts/hero.html" %}
+{% import "components/macros.html" as m with context %}
+
+{% block content %}
+	<p class="title has-text-centered">Welcome to ProxiTok!</p>
+	<p class="subtitle has-text-centered">An alternative open source frontend for TikTok</p>
+	{% call m.form('/redirect/search', 'GET') %}
+		<div class="field has-addons has-addons-centered">
+			<div class="control">
+				<input class="input" name="term" placeholder="Search" required>
+			</div>
+			<div class="control">
+				<div class="select">
+					<select name="type">
+						<option value="url">TikTok URL</option>
+						<option value="user">Username</option>
+						<option value="tag">Tag</option>
+						<option value="music">Music ID</option>
+						<option value="video">Video ID</option>
+					</select>
+				</div>
+			</div>
+			<div class="control">
+				<button type="submit" class="button is-success">
+					{{ m.icon('search', 'Search') }}
+				</button>
+			</div>
+		</div>
+	{% endcall %}
+	<div class="columns is-centered is-mobile mt-2">
+		<div class="column is-narrow">
+			<p>For you</p>
+			<a class="button is-success" href="{{ path('/foryou') }}">Go</a>
+		</div>
+		<div class="column is-narrow">
+			<p>Following</p>
+			<a class="button is-success" href="{{ path('/following') }}">Go</a>
+		</div>
+	</div>
+{% endblock %}

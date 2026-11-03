@@ -1,0 +1,45 @@
+{% extends "layouts/default.html" %}
+{% import "components/macros.html" as m with context %}
+
+{% set has_rss = true %}
+
+{% set og = info.og %}
+{% set og_content = info.detail.avatar_larger %}
+{% set og_url = url_user(info.detail.unique_id) %}
+
+{% block header %}
+	<figure class="image is-inline-block is-128x128">
+		<img class="is-rounded" src="{{ url_stream(info.detail.avatar_larger) }}" />
+	</figure>
+	<p class="title">
+		{% if info.detail.verified %}
+		{{ m.icon('check-o', info.detail.nickname) }}
+		{% else %}
+		{{ info.detail.nickname }}
+		{% endif %}
+	</p>
+	<p class="subtitle">{{ m.rss() }}</p>
+	{% if info.detail.private_account %}
+	<p><strong>Private account</strong></p>
+	{% endif %}
+	<b>Description</b>
+	<p class="new-line">{{ info.detail.signature }}</p>
+	{% if info.detail.bio_link %}
+	<p>Link: <a href="{{ safe_link(info.detail.bio_link) }}" rel="nofollow noopener noreferrer">{{ info.detail.bio_link }}</a></p>
+	{% endif %}
+	<b>Stats</b>
+	<p>Following: {{ number(info.stats.following_count) }} / Followers: {{ number(info.stats.follower_count) }}</p>
+	<p>Hearts: {{ number(info.stats.heart_count) }} / Videos: {{ info.stats.video_count }}</p>
+	{% call m.details('Details') %}
+	{% if info.detail.region %}
+	<p>Region: {{ info.detail.region }}</p>
+	{% endif %}
+	{% if info.detail.commerce_user %}
+	<p>Category: {{ info.detail.category }}</p>
+	{% endif %}
+	{% endcall %}
+{% endblock %}
+
+{% block content %}
+	{% include "components/feed.html" %}
+{% endblock %}

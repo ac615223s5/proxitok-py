@@ -1,0 +1,22 @@
+{% extends "layouts/default.html" %}
+
+{% set og = info.og %}
+{% set og_content = info.detail.cover_large %}
+{% set og_url = path('/music/' ~ (info.detail.id | urlencode)) %}
+
+{% block header %}
+	{% if info.detail.cover_large %}
+	<figure class="image is-inline-block is-128x128">
+		<img class="is-rounded" src="{{ url_stream(info.detail.cover_large) }}" />
+	</figure>
+	{% endif %}
+	<p class="title">{{ info.detail.title }}</p>
+	<p class="subtitle">{{ info.desc }}</p>
+	{% if info.stats.video_count is not none %}
+	<p>Videos: {{ number(info.stats.video_count) }}</p>
+	{% endif %}
+{% endblock %}
+
+{% block content %}
+	{% include "components/feed.html" %}
+{% endblock %}

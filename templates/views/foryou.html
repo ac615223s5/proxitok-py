@@ -1,0 +1,13 @@
+{% extends "layouts/default.html" %}
+{% import "components/macros.html" as m with context %}
+
+{% set has_rss = true %}
+
+{% block header %}
+	<p class="title">For you</p>
+	<p class="subtitle">{{ m.rss() }}</p>
+{% endblock %}
+
+{% block content %}
+	{% include "components/feed.html" %}
+{% endblock %}

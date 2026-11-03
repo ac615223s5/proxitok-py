@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+{% import "components/macros.html" as m with context %}
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+	<channel>
+		<title>{{ title }}</title>
+		<description><![CDATA[{{ desc }}]]></description>
+		{% if image %}
+		<image>
+			<link>{{ link }}</link>
+			<title>{{ title }}</title>
+			<url>{{ image }}</url>
+		</image>
+		{% endif %}
+		<link>{{ link }}</link>
+		<atom:link href="{{ link ~ '/rss' }}" rel="self" type="application/rss+xml"></atom:link>
+		{% for item in items %}
+			<item>
+				<title>{{ item.desc }}</title>
+				{% set desc_html = render_desc(item.desc, item.text_extra) %}
+				<description><![CDATA[{% if desc_html %}<p>{{ desc_html }}</p>{% endif %}{{ m.content(item, autoplay=false, simple=true) }}]]></description>
+				<link>{{ url_video_internal(item.author.unique_id, item.id) }}</link>
+				<pubDate>{{ item.create_time | date('r') }}</pubDate>
+				<guid isPermaLink="false">{{ item.id }}</guid>
+				<dc:creator>@{{ item.author.unique_id }}</dc:creator>
+			</item>
+		{% endfor %}
+	</channel>
+</rss>

@@ -1,0 +1,47 @@
+{
+ "challengeInfo": {
+  "challenge": {
+   "coverLarger": "",
+   "coverMedium": "",
+   "coverThumb": "",
+   "desc": "",
+   "id": "229207",
+   "isCommerce": false,
+   "profileLarger": "",
+   "profileMedium": "",
+   "profileThumb": "",
+   "stats": {
+    "videoCount": 0,
+    "viewCount": 131199000000000
+   },
+   "title": "fyp"
+  },
+  "challengeAnnouncement": {
+   "body": "",
+   "title": ""
+  },
+  "stats": {
+   "videoCount": 0,
+   "viewCount": 131199000000000
+  },
+  "statsV2": {
+   "videoCount": "9487016238",
+   "viewCount": "131198991980184"
+  }
+ },
+ "extra": {
+  "fatal_item_ids": [],
+  "logid": "20261103192223ABC2D0B1097E1A19EA95",
+  "now": 1793733743000
+ },
+ "log_pb": {
+  "impr_id": "20261103192223ABC2D0B1097E1A19EA95"
+ },
+ "shareMeta": {
+  "desc": "Watch awesome short videos created with trending hashtag #fyp",
+  "title": "#fyp on TikTok"
+ },
+ "statusCode": 0,
+ "status_code": 0,
+ "status_msg": ""
+}

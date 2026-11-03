@@ -1,0 +1,19 @@
+{
+ "/api/user/playlist/": 9352,
+ "/tiktok/ppf/api/eligibility/v2": 197,
+ "/api/story/item_list/": 333,
+ "/api/ba/business/suite/permission/list/": 31,
+ "/api/global-footer/graphql": 58717,
+ "/api/user/list/": 56496,
+ "/api/user/collection_list/": 1338,
+ "/api/repost/item_list/": 684952,
+ "/api/feedback/v1/newest_reply/": 285,
+ "/api/v1/web-cookie-privacy/config": 3178,
+ "/api/share/settings/": 870,
+ "/node-webapp/api/login-config": 865,
+ "/api/prefetch/explore/item_list/": 231,
+ "/api/challenge/detail/": 727,
+ "/api/recommend/item_list/": 147494,
+ "/api/music/item_list/": 23164,
+ "/api/recommend/user/": 234
+}

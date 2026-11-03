@@ -1,0 +1,30 @@
+{% import "components/macros.html" as m with context %}
+<nav class="navbar" role="navigation" aria-label="main navigation">
+	<div class="navbar-brand">
+		<a href="{{ path('/') }}" class="navbar-item">
+			{{ m.icon('home', 'ProxiTok') }}
+		</a>
+		<a role="button" id="navbar-burger" class="navbar-burger" aria-label="menu" aria-expanded="false">
+			<span aria-hidden="true"></span>
+			<span aria-hidden="true"></span>
+			<span aria-hidden="true"></span>
+		</a>
+	</div>
+
+	<div id="navbar-menu" class="navbar-menu">
+		<div class="navbar-start">
+			<a href="{{ path('/settings') }}" class="navbar-item">
+				{{ m.icon('options', 'Settings') }}
+			</a>
+			<a href="{{ path('/about') }}" class="navbar-item">
+				{{ m.icon('info', 'About') }}
+			</a>
+		</div>
+		<div class="navbar-end">
+			<a href="https://github.com/pablouser1/ProxiTok" class="navbar-item" target="_blank">
+				{{ m.icon('code-slash', 'Source') }}
+			</a>
+		</div>
+	</div>
+</nav>
+<script src="{{ assets('js', 'navbar.js') }}"></script>

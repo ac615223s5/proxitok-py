@@ -1,0 +1,26 @@
+{% extends "layouts/default.html" %}
+{% import "components/macros.html" as m with context %}
+
+{% set has_rss = true %}
+
+{% set og = info.og %}
+{% set og_content = info.detail.profile_larger %}
+{% set og_url = url_tag(info.detail.title) %}
+
+{% block header %}
+	{% if info.detail.profile_larger %}
+	<figure class="image is-inline-block is-128x128">
+		<img class="is-rounded" src="{{ url_stream(info.detail.profile_larger) }}" />
+	</figure>
+	{% endif %}
+	<p class="title">{{ info.detail.title }}</p>
+	<p class="subtitle">{{ m.rss() }}</p>
+	<p>Views: {{ number(info.stats.view_count) }}</p>
+	{% call m.details('Details') %}
+	<p>Is commerce: {{ bool_to_str(info.detail.is_commerce) }}</p>
+	{% endcall %}
+{% endblock %}
+
+{% block content %}
+	{% include "components/feed.html" %}
+{% endblock %}

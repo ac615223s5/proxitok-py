@@ -1,0 +1,84 @@
+{% extends "layouts/" ~ layout ~ ".html" %}
+{% import "components/macros.html" as m with context %}
+
+{% set og = info.og %}
+{% set og_content = item.video.origin_cover or (item.image_post.cover if item.image_post else '') %}
+{% set og_url = url_video_internal(info.detail.unique_id, item.id) %}
+
+{% if item.desc %}
+	{% set title = item.desc | trim %}
+{% endif %}
+
+{% block content %}
+	<div class="columns is-centered is-vcentered">
+		<div class="column has-text-centered">
+			{{ m.content(item, autoplay=true) }}
+		</div>
+		<div class="column">
+			<div class="box">
+				<article class="media">
+					<figure class="media-left">
+						<p class="image is-64x64">
+							<img src="{{ url_stream(info.detail.avatar_thumb) }}" />
+						</p>
+					</figure>
+					<div class="media-content">
+						<p>
+							<strong>{{ info.detail.nickname }}</strong>
+							<small>
+								<a href="{{ url_user(info.detail.unique_id) }}">@{{ info.detail.unique_id }}</a>
+							</small>
+							<small title="{{ item.create_time | date('M d, Y H:i:s e') }}">{{ item.create_time | date('M d, Y') }}</small>
+						</p>
+						{% if item.challenges %}
+						{{ m.tags(item.challenges) }}
+						{% endif %}
+						<div class="content">
+							{% set desc_html = render_desc(item.desc, item.text_extra) %}
+							{% if desc_html %}
+							<p>{{ desc_html }}</p>
+							{% endif %}
+							{{ m.audio(item.music.title, item.music.play_url, item.music.id) }}
+							{{ m.stats(item.stats.play_count, item.stats.digg_count, item.stats.comment_count, item.stats.share_count) }}
+							<div class="has-text-centered">
+								{{ m.share(info.detail.unique_id, item.id) }}
+								{% if item.has_video %}
+								<!-- Download links, not shown if item is a gallery -->
+								{{ m.download(item.id, info.detail.unique_id, item.video.play_addr, item.video.download_addr) }}
+								{% endif %}
+							</div>
+						</div>
+					</div>
+				</article>
+			</div>
+			{% if item.comments %}
+			<div class="box">
+				<p class="is-size-5 has-text-centered">Comments</p>
+				{% for comment in item.comments %}
+				<article class="media">
+					<figure class="media-left">
+						<p class="image is-64x64">
+							<img src="{{ url_stream(comment.user.avatar_thumb) }}" />
+						</p>
+					</figure>
+					<div class="media-content">
+						<div class="content">
+							<p>
+								<strong>{{ comment.user.unique_id }}</strong>
+								<small>
+									<a href="{{ url_user(comment.user.unique_id) }}">@{{ comment.user.nickname }}</a>
+								</small>
+								<small title="{{ comment.create_time | date('M d, Y H:i:s e') }}">{{ comment.create_time | date('M d, Y') }}</small>
+								<br>
+								{{ comment.text }}
+							</p>
+						</div>
+						<p>{{ m.icon('heart', number(comment.digg_count)) }}</p>
+					</div>
+				</article>
+				{% endfor %}
+			</div>
+			{% endif %}
+		</div>
+	</div>
+{% endblock %}

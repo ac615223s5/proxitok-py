@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+
+{% include "components/head.html" %}
+
+<body>
+	<section class="hero is-fullheight">
+		<div class="hero-head">
+			{% include "components/navbar.html" %}
+		</div>
+		<div class="hero-body">
+			<div class="container">
+				{% block content %}{% endblock %}
+			</div>
+		</div>
+	</section>
+	{% block extra %}{% endblock %}
+</body>
+
+</html>

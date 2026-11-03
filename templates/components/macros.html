@@ -1,0 +1,165 @@
+{#- Jinja ports of the reusable Latte components (icon, card, details, form, rss and themes/common/*). -#}
+
+{% macro icon_common(icon) -%}
+<span class="icon">
+	<i class="gg-{{ icon }}"></i>
+</span>
+{%- endmacro %}
+
+{#- components/icon.latte -#}
+{% macro icon(icon, text=none) -%}
+{% if text is not none %}
+<span class="icon-text">
+	{{ icon_common(icon) }}
+	<span>{{ text }}</span>
+</span>
+{% else %}
+{{ icon_common(icon) }}
+{% endif %}
+{%- endmacro %}
+
+{#- components/card.latte; caller() renders the content, footer passed as a string/Markup -#}
+{% macro card(title='', footer='') -%}
+<div class="card">
+	{% if title %}
+	<header class="card-header">
+		<p class="card-header-title">{{ title }}</p>
+	</header>
+	{% endif %}
+	<div class="card-content">
+		{{ caller() }}
+	</div>
+	{% if footer %}
+	<footer class="card-footer">
+		{{ footer }}
+	</footer>
+	{% endif %}
+</div>
+{%- endmacro %}
+
+{#- components/details.latte -#}
+{% macro details(title) -%}
+<details>
+	<summary>{{ title }}</summary>
+	{{ caller() }}
+</details>
+{%- endmacro %}
+
+{#- components/form.latte -#}
+{% macro form(form_path, method, submit=false) -%}
+<form action="{{ path(form_path) }}" method="{{ method }}">
+	{{ caller() }}
+	{% if submit %}
+	<div class="field">
+		<div class="control">
+			<button class="button is-success" type="submit">Submit</button>
+		</div>
+	</div>
+	{% endif %}
+</form>
+{%- endmacro %}
+
+{#- components/rss.latte -#}
+{% macro rss() -%}
+<a href="{{ rss_url() }}">
+	{{ icon('feed', 'RSS Feed') }}
+</a>
+{%- endmacro %}
+
+{#- themes/common/audio.latte -#}
+{% macro audio(song_title, url, music_id='') -%}
+<p class="mb-1">{% if music_id %}<a href="{{ path('/music/' ~ (music_id | urlencode)) }}">{{ icon('music', song_title) }}</a>{% else %}{{ icon('music', song_title) }}{% endif %}</p>
+{% if url %}
+<audio controls preload="none" src="{{ url_stream(url) }}"></audio>
+{% endif %}
+{%- endmacro %}
+
+{#- themes/common/stats.latte -#}
+{% macro stats(play_count, digg_count, comment_count, share_count) -%}
+<p>
+	{{ icon('eye', number(play_count)) }}
+	{{ icon('heart', number(digg_count)) }}
+	{{ icon('comment', number(comment_count)) }}
+	{{ icon('share', number(share_count)) }}
+</p>
+{%- endmacro %}
+
+{#- themes/common/tags.latte -#}
+{% macro tags(challenges) -%}
+<details>
+	<summary>{{ icon('tag', 'Tags used') }}</summary>
+	<div class="tags">
+		{% for challenge in challenges %}
+			<a class="tag is-primary is-rounded" href="{{ url_tag(challenge.title) }}">#{{ challenge.title }}</a>
+		{% endfor %}
+	</div>
+</details>
+{%- endmacro %}
+
+{#- themes/common/download.latte (watermark = downloadAddr, falls back to playAddr) -#}
+{% macro download(id, unique_id, play_addr, download_addr='') -%}
+<div class="field is-grouped is-grouped-centered">
+	<p class="control">
+		<a target="_blank" href="{{ url_download(download_addr or play_addr, unique_id, id, true) }}" class="button is-info">Watermark</a>
+	</p>
+	<p class="control">
+		<a target="_blank" href="{{ url_download(play_addr, unique_id, id, false) }}" class="button is-success">No watermark</a>
+	</p>
+</div>
+{%- endmacro %}
+
+{#- themes/common/share.latte -#}
+{% macro share(unique_id, id) -%}
+<div class="field is-grouped is-grouped-centered">
+	<p class="control">
+		<a class="button is-success" href="{{ url_video_internal(unique_id, id) }}">
+			{{ icon('lock', 'Instance') }}
+		</a>
+	</p>
+	<p class="control">
+		<a class="button is-warning" href="{{ url_video_external(unique_id, id) }}">
+			{{ icon('lock-unlock', 'Original') }}
+		</a>
+	</p>
+</div>
+{%- endmacro %}
+
+{#- themes/common/content.latte: video player, or image carousel for photo posts -#}
+{% macro content(item, autoplay=false, simple=false) -%}
+{% if not item.is_image_post %}
+<video controls{% if autoplay %} autoplay{% endif %} poster="{{ url_stream(item.video.origin_cover) }}" preload="none">
+	<source src="{{ url_stream(item.video.play_addr) }}" type="video/mp4" />
+</video>
+{% elif simple %}
+	{% for image in item.image_post.images %}
+		<img src="{{ url_stream(image) }}" />
+	{% endfor %}
+{% else %}
+	<section class="carousel" aria-label="carousel" Tabindex="0">
+		<div class="slides">
+			{% for image in item.image_post.images %}
+			<div class="slides-item" id="{{ item.id }}-image{{ loop.index }}" tabindex="0">
+				<img src="{{ url_stream(image) }}" />
+			</div>
+			{% endfor %}
+		</div>
+		<div class="carousel__nav">
+			{% for image in item.image_post.images %}
+			<a class="slider-nav" href="#{{ item.id }}-image{{ loop.index }}">{{ loop.index }}</a>
+			{% endfor %}
+		</div>
+		<div class="carousel__skip-message" id="skip-link" tabindex="0"></div>
+	</section>
+{% endif %}
+{%- endmacro %}
+
+{#- themes/common/controls.latte. "First" only when a non-initial cursor was requested. -#}
+{% macro controls(has_more, cursor) -%}
+<div class="buttons">
+	{% set current = request.query_params.get('cursor', '') %}
+	{% if current and current != '0' %}
+	<a class="button is-danger" href="?cursor=0">First</a>
+	{% endif %}
+	<a{% if not has_more %} disabled{% endif %} class="button is-success" href="?cursor={{ cursor | urlencode }}">Next</a>
+</div>
+{%- endmacro %}

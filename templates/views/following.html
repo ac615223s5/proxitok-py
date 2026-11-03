@@ -1,0 +1,39 @@
+{% extends "layouts/default.html" %}
+{% import "components/macros.html" as m with context %}
+
+{% block header %}
+	<p class="title">Discover</p>
+{% endblock %}
+
+{% block content %}
+	<div class="columns is-multiline is-vcentered">
+	{% for user in feed.users %}
+		<div class="column is-one-quarter">
+			{% set footer %}<a href="{{ url_user(user.detail.unique_id) }}" class="card-footer-item">Go</a>{% endset %}
+			{% call m.card(footer=footer) %}
+				<div class="media">
+					<!-- Show image if exists -->
+					{% if user.detail.avatar_larger %}
+						<div class="media-left">
+							<figure class="image is-96x96">
+								<img loading="lazy" width="96" height="96" src="{{ url_stream(user.detail.avatar_larger) }}" />
+							</figure>
+						</div>
+					{% endif %}
+					<div class="media-content">
+						<p class="title">{{ user.detail.nickname }}</p>
+						<p class="subtitle">{{ user.detail.unique_id }}</p>
+					</div>
+				</div>
+				<div class="content">
+					<p>{{ user.detail.signature }}</p>
+				</div>
+			{% endcall %}
+		</div>
+	{% endfor %}
+	{% if not feed.users %}
+		<p class="title">No users sent by TikTok!</p>
+	{% endif %}
+	</div>
+	{{ m.controls(feed.has_more, feed.cursor) }}
+{% endblock %}

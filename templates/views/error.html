@@ -1,0 +1,24 @@
+{% extends "layouts/hero.html" %}
+
+{% block content %}
+	<p class="title">There was an error processing your request!</p>
+	<div class="content">
+		<p>HTTP Code: {{ http_code }}</p>
+		{% if tiktok_code is not none %}
+		<p>
+			<span>API error code {{ tiktok_code }} ({{ msg }})</span>
+			{% if tiktok_code == 10000 or tiktok_code == -1 %}
+				<a href="{{ path('/verify') }}">What does this mean?</a>
+			{% endif %}
+		</p>
+		{% else %}
+		<p>{{ msg }}</p>
+		{% endif %}
+		{% if response %}
+			<details>
+				<summary>Show debug info</summary>
+				<pre style="max-height: 60vh;">{{ response | json_pretty }}</pre>
+			</details>
+		{% endif %}
+	</div>
+{% endblock %}

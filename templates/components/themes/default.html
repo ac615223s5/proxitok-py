@@ -1,0 +1,57 @@
+{% import "components/macros.html" as m with context %}
+<div class="container">
+	{% for item in feed.items %}
+	<article class="media">
+		<figure class="media-left">
+			<p class="image is-64x64">
+				<img class="is-rounded" src="{{ url_stream(item.author.avatar_thumb) }}" />
+			</p>
+		</figure>
+		<div class="media-content">
+			<p>
+				<strong>
+					{% if item.author.verified %}
+					{{ m.icon('check-o', item.author.nickname) }}
+					{% else %}
+					{{ item.author.nickname }}
+					{% endif %}
+				</strong>
+				<small>
+					<a href="{{ url_user(item.author.unique_id) }}">@{{ item.author.unique_id }}</a>
+				</small>
+				<small title="{{ item.create_time | date('M d, Y H:i:s e') }}">{{ item.create_time | date('M d, Y') }}</small>
+			</p>
+			{% if item.challenges %}
+			{{ m.tags(item.challenges) }}
+			{% endif %}
+			{% set desc_html = render_desc(item.desc, item.text_extra) %}
+			{% if desc_html %}
+			<p class="mb-2 mt-2">{{ desc_html }}</p>
+			{% endif %}
+			{{ m.audio(item.music.title, item.music.play_url, item.music.id) }}
+			{{ m.stats(item.stats.play_count, item.stats.digg_count, item.stats.comment_count, item.stats.share_count) }}
+			<div class="has-text-centered">
+				{{ m.content(item, autoplay=false) }}
+			</div>
+			{% if item.has_video %}
+			<!-- Download links, not shown if item is a gallery -->
+			<p class="has-text-centered"><b>Download video</b></p>
+			{{ m.download(item.id, item.author.unique_id, item.video.play_addr, item.video.download_addr) }}
+			{% endif %}
+			<p class="has-text-centered"><b>Share link</b></p>
+			{{ m.share(item.author.unique_id, item.id) }}
+			<div class="has-text-centered">
+				{% call m.details('Details') %}
+				<p>Can duet: {{ bool_to_str(item.duet_enabled) }}</p>
+				<p>Can stitch (add this video to other ones): {{ bool_to_str(item.stitch_enabled) }}</p>
+				<p>Can be shared: {{ bool_to_str(item.share_enabled) }}</p>
+				{% endcall %}
+			</div>
+		</div>
+	</article>
+	{% endfor %}
+	{% if not feed.items %}
+		<p class="title">No items sent by TikTok!</p>
+	{% endif %}
+</div>
+{{ m.controls(feed.has_more, feed.cursor) }}

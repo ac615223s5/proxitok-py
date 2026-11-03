@@ -1,0 +1,15 @@
+{% import "components/macros.html" as m with context %}
+{% call m.form('/settings/general', 'POST', submit=true) %}
+	<div class="field">
+		<label class="label">Theme</label>
+		<div class="control">
+			<div class="select">
+				<select name="theme">
+					{% for t in themes %}
+						<option value="{{ t }}"{% if current_theme == t %} selected{% endif %}>{{ t | capitalize }}</option>
+					{% endfor %}
+				</select>
+			</div>
+		</div>
+	</div>
+{% endcall %}
